@@ -1,7 +1,6 @@
 package com.Revolut.controller;
 
 import com.fasterxml.jackson.databind.JsonMappingException;
-import com.revolut.task.model.Error;
 import org.slf4j.Logger;
 
 import javax.annotation.Priority;

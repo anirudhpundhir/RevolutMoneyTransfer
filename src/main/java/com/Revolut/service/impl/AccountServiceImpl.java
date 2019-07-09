@@ -1,8 +1,9 @@
 package com.Revolut.service.impl;
 
-import com.Revolut.model.Account;
 import com.Revolut.model.Money;
 import com.Revolut.model.exception.AccountNotFoundException;
+import com.Revolut.model.sql.tables.Account;
+import com.Revolut.model.sql.tables.AccountRecord;
 import com.Revolut.service.api.AccountService;
 import com.Revolut.service.api.DatabaseManager;
 import com.Revolut.service.api.ExchangeService;
@@ -29,31 +30,31 @@ public class AccountServiceImpl implements AccountService {
     }
 
     @Override
-    public Account createAccount() {
+    public com.Revolut.model.Account createAccount() {
         AccountRecord record = databaseManager.getSqlDSL()
-                .insertInto(ACCOUNT)
+                .insertInto(Account.ACCOUNT)
                 .defaultValues()
                 .returning().fetchOne();
         return convertFrom(record);
     }
 
     @Override
-    public Account createAccount(String currency) {
+    public com.Revolut.model.Account createAccount(String currency) {
         if (!exchangeService.isCurrencySupported(currency)) {
             throw new IllegalArgumentException("Currency " + currency + " is not supported");
         }
         AccountRecord record = databaseManager.getSqlDSL()
-                .insertInto(ACCOUNT, ACCOUNT.MONEY_CURRENCY)
+                .insertInto(Account.ACCOUNT, Account.ACCOUNT.MONEY_CURRENCY)
                 .values(currency)
                 .returning().fetchOne();
         return convertFrom(record);
     }
 
     @Override
-    public Account getAccount(Long id) {
+    public com.Revolut.model.Account getAccount(Long id) {
         AccountRecord accountRecord = databaseManager.getSqlDSL()
-                .selectFrom(ACCOUNT)
-                .where(ACCOUNT.ID.eq(id))
+                .selectFrom(Account.ACCOUNT)
+                .where(Account.ACCOUNT.ID.eq(id))
                 .fetchOne();
         if (accountRecord != null) {
             return convertFrom(accountRecord);
@@ -64,20 +65,20 @@ public class AccountServiceImpl implements AccountService {
     @Override
     public boolean isLocked(Long id) {
         Record1<Boolean> locked = databaseManager.getSqlDSL()
-                .select(ACCOUNT.LOCKED).from(ACCOUNT)
-                .where(ACCOUNT.ID.eq(id))
+                .select(Account.ACCOUNT.LOCKED).from(Account.ACCOUNT)
+                .where(Account.ACCOUNT.ID.eq(id))
                 .fetchOne();
         if (locked == null) {
             throw new AccountNotFoundException(id);
         }
-        return locked.get(ACCOUNT.LOCKED);
+        return locked.get(Account.ACCOUNT.LOCKED);
     }
 
     @Override
     public void removeAccount(Long id) {
         boolean accountExists = databaseManager.getSqlDSL()
-                .deleteFrom(ACCOUNT)
-                .where(ACCOUNT.ID.eq(id))
+                .deleteFrom(Account.ACCOUNT)
+                .where(Account.ACCOUNT.ID.eq(id))
                 .execute() > 0;
         if (!accountExists) {
             throw new AccountNotFoundException(id);
@@ -89,9 +90,9 @@ public class AccountServiceImpl implements AccountService {
         DSLContext sql = databaseManager.getSqlDSL();
         boolean accountExists = sql.transactionResult(configuration ->
                 DSL.using(configuration)
-                        .update(ACCOUNT)
-                        .set(ACCOUNT.LOCKED, true)
-                        .where(ACCOUNT.ID.eq(id))
+                        .update(Account.ACCOUNT)
+                        .set(Account.ACCOUNT.LOCKED, true)
+                        .where(Account.ACCOUNT.ID.eq(id))
                         .execute() > 0);
         if (!accountExists) {
             throw new AccountNotFoundException(id);
@@ -103,17 +104,17 @@ public class AccountServiceImpl implements AccountService {
         DSLContext sql = databaseManager.getSqlDSL();
         boolean accountExists = sql.transactionResult(configuration ->
                 DSL.using(configuration)
-                        .update(ACCOUNT)
-                        .set(ACCOUNT.LOCKED, false)
-                        .where(ACCOUNT.ID.eq(id))
+                        .update(Account.ACCOUNT)
+                        .set(Account.ACCOUNT.LOCKED, false)
+                        .where(Account.ACCOUNT.ID.eq(id))
                         .execute() > 0);
         if (!accountExists) {
             throw new AccountNotFoundException(id);
         }
     }
 
-    private Account convertFrom(AccountRecord accountRecord) {
-        Account account = new Account();
+    private com.Revolut.model.Account convertFrom(AccountRecord accountRecord) {
+        com.Revolut.model.Account account = new com.Revolut.model.Account();
         account.setId(accountRecord.getId());
         account.setLocked(accountRecord.getLocked());
         Money balance = new Money();
