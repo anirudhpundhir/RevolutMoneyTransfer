@@ -27,7 +27,7 @@ In *build/libs* will be jar file to run
 `java -jar money-transfer-all-1.0-SNAPSHOT.jar`  
 url - `localhost:4567`
 ## How to use
-Each user has default account with 10000 RUB  
+Each user has default account with 10000 INR  
 After running, there will be created three users.
 First user will have two additional accounts, one with euro
 
