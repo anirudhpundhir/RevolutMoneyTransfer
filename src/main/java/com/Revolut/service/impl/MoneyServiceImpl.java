@@ -5,16 +5,11 @@ import com.Revolut.model.exception.AccountLockedException;
 import com.Revolut.model.exception.AccountNotFoundException;
 import com.Revolut.model.exception.LimitedBalanceException;
 import com.Revolut.model.exception.NegativeAmountException;
+import com.Revolut.model.sql.tables.Account;
 import com.Revolut.service.api.*;
 import com.google.inject.Singleton;
-import com.revolut.task.model.Money;
-import com.revolut.task.model.exceptions.AccountLockedException;
-import com.revolut.task.model.exceptions.AccountNotFoundException;
-import com.revolut.task.model.exceptions.MoneyNegativeAmountException;
-import com.revolut.task.model.exceptions.NotEnoughMoneyException;
-import com.revolut.task.model.sql.tables.Account;
-import com.revolut.task.service.api.*;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.log4j.Logger;
 import org.jooq.impl.DSL;
 
 import javax.inject.Inject;
@@ -25,6 +20,8 @@ import java.util.Optional;
 @Slf4j
 @Singleton
 public class MoneyServiceImpl implements MoneyService {
+
+    final static Logger log = Logger.getLogger(MoneyServiceImpl.class);
     private DatabaseManager databaseManager;
     private AccountLockManager lockManager;
     private ExchangeService exchangeService;
@@ -69,7 +66,7 @@ public class MoneyServiceImpl implements MoneyService {
     @Override
     public void transfer(Long fromId, Long toId, Money moneyToTransfer) {
         if (moneyToTransfer.getAmount().signum() == -1) {
-            throw new MoneyNegativeAmountException("transfer");
+            throw new NegativeAmountException("transfer");
         }
         lockManager.doInLock(fromId, toId, () ->
                 databaseManager.getSqlDSL().transaction(configuration -> {
@@ -93,16 +90,16 @@ public class MoneyServiceImpl implements MoneyService {
                     Money withdrawInCurrency =
                             exchangeService.exchange(moneyToWithdraw, balance.getCurrency());
                     Money newBalance = Money.subtract(balance, withdrawInCurrency);
-                    log.trace("withdraw: id={}, old={}, withdraw={}, withdrawInCurrency={}, new={}",
-                            id, balance, moneyToWithdraw, withdrawInCurrency, newBalance);
+                  /*  log.trace("withdraw: id={}, old={}, withdraw={}, withdrawInCurrency={}, new={}",
+                            id, balance, moneyToWithdraw, withdrawInCurrency, newBalance);*/
                     if (newBalance.getAmount().signum() == -1) {
                         throw new LimitedBalanceException(id, "withdraw");
                     }
                     DSL.using(configuration)
-                            .update(ACCOUNT)
-                            .set(ACCOUNT.MONEY_VALUE, newBalance.getAmount())
-                            .set(ACCOUNT.MONEY_CURRENCY, newBalance.getCurrency())
-                            .where(ACCOUNT.ID.eq(id)).execute();
+                            .update(Account.ACCOUNT)
+                            .set(Account.ACCOUNT.MONEY_VALUE, newBalance.getAmount())
+                            .set(Account.ACCOUNT.MONEY_CURRENCY, newBalance.getCurrency())
+                            .where(Account.ACCOUNT.ID.eq(id)).execute();
                 }));
     }
 
@@ -119,13 +116,13 @@ public class MoneyServiceImpl implements MoneyService {
                     Money depositInCurrency =
                             exchangeService.exchange(moneyToDeposit, balance.getCurrency());
                     Money newBalance = Money.add(balance, depositInCurrency);
-                    log.trace("deposit: id={}, old={}, deposit={}, depositInCurrency={}, new={}",
-                            id, balance, moneyToDeposit, depositInCurrency, newBalance);
+                   /* log.trace("deposit: id={}, old={}, deposit={}, depositInCurrency={}, new={}",
+                            id, balance, moneyToDeposit, depositInCurrency, newBalance);*/
                     DSL.using(configuration)
-                            .update(ACCOUNT)
-                            .set(ACCOUNT.MONEY_VALUE, newBalance.getAmount())
-                            .set(ACCOUNT.MONEY_CURRENCY, newBalance.getCurrency())
-                            .where(ACCOUNT.ID.eq(id)).execute();
+                            .update(Account.ACCOUNT)
+                            .set(Account.ACCOUNT.MONEY_VALUE, newBalance.getAmount())
+                            .set(Account.ACCOUNT.MONEY_CURRENCY, newBalance.getCurrency())
+                            .where(Account.ACCOUNT.ID.eq(id)).execute();
                 }));
     }
 

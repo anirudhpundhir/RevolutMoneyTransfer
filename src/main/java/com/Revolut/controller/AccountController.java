@@ -2,6 +2,8 @@ package com.Revolut.controller;
 
 
 import com.Revolut.dependency.InjectorProvider;
+import com.Revolut.model.Account;
+import com.Revolut.service.api.AccountService;
 
 import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;

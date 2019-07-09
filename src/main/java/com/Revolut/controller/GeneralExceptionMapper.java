@@ -1,9 +1,8 @@
 package com.Revolut.controller;
 
 
-import com.revolut.task.model.Error;
-import com.revolut.task.model.exceptions.AccountNotFoundException;
-import com.revolut.task.model.exceptions.MoneyNegativeAmountException;
+import com.Revolut.model.exception.AccountNotFoundException;
+import com.Revolut.model.exception.NegativeAmountException;
 import org.slf4j.Logger;
 
 import javax.ws.rs.NotAllowedException;
@@ -36,7 +35,7 @@ public class GeneralExceptionMapper implements ExceptionMapper<Exception> {
             }
         } else if (e instanceof AccountNotFoundException) {
             status = Status.NOT_FOUND;
-        } else if (e instanceof MoneyNegativeAmountException) {
+        } else if (e instanceof NegativeAmountException) {
             status = Status.BAD_REQUEST;
         }
         return status(status)

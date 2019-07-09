@@ -2,6 +2,7 @@ package com.Revolut;
 
 import com.Revolut.dependency.InjectorProvider;
 import com.Revolut.service.api.DatabaseManager;
+import com.Revolut.util.DatabaseMigrator;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.handler.ErrorHandler;
 import org.eclipse.jetty.servlet.ServletContextHandler;

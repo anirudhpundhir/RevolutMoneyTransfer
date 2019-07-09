@@ -1,8 +1,8 @@
 package com.Revolut.controller;
 
-import com.revolut.task.di.InjectorProvider;
-import com.revolut.task.model.Money;
-import com.revolut.task.service.api.MoneyService;
+import com.Revolut.dependency.InjectorProvider;
+import com.Revolut.model.Money;
+import com.Revolut.service.api.MoneyService;
 
 import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
@@ -12,7 +12,7 @@ import javax.ws.rs.core.Response;
 public class TransactionController {
     private final MoneyService moneyService;
 
-    public MoneyController() {
+    public TransactionController() {
         moneyService = InjectorProvider.provide().getInstance(MoneyService.class);
     }
 
