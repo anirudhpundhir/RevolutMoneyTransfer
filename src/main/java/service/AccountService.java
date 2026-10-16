@@ -1,22 +1,23 @@
 package service;
 
 import entity.Account;
+import entity.Money;
 
 import java.util.Collection;
 
 public interface AccountService {
-    public Account addAccount(Account account);
 
-    public void addAll(Iterable<Account> accounts);
+    Account createAccount(String name, Money initialFunds);
 
-    public Collection<Account> getAccounts();
+    Collection<Account> getAccounts();
 
-    public Account getAccount(String id);
+    /** @throws exception.NotFoundException if no such account */
+    Account getAccount(String accountNumber);
 
-    public Account editAccount(Account user)
-            throws exception.UserException;
+    Account renameAccount(String accountNumber, String newName);
 
-    public void deleteAccount(String id);
+    /** Deletes an account; only allowed when its balance is zero. */
+    void deleteAccount(String accountNumber);
 
-    public boolean accountExist(String id);
+    boolean accountExist(String accountNumber);
 }

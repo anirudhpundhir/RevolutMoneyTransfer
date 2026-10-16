@@ -1,21 +1,29 @@
 package service;
 
+import entity.Account;
 import entity.User;
-import exception.UserException;
+import entity.dto.UserDTO;
 
 import java.util.Collection;
+import java.util.List;
 
 public interface UserService {
 
-    public User addUser (User user);
+    /** Creates a user together with an empty default account. */
+    User addUser(UserDTO user);
 
-    public Collection<User> getUsers ();
-    public User getUser (String id);
+    Collection<User> getUsers();
 
-    public User editUser (User user)
-            throws UserException;
+    /** @throws exception.NotFoundException if no such user */
+    User getUser(String id);
 
-    public void deleteUser (String id);
+    List<Account> getAccounts(String userId);
 
-    public boolean userExist (String id);
+    Account openAccount(String userId, String name, entity.Money initialFunds);
+
+    User editUser(String id, UserDTO changes);
+
+    void deleteUser(String id);
+
+    boolean userExist(String id);
 }

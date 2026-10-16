@@ -1,34 +1,35 @@
 package controllers;
 
-import com.google.gson.Gson;
-import entity.StandardResponse;
-import entity.StatusResponse;
-import service.AccountService;
+import entity.Transfer;
+import entity.dto.TransferDTO;
 import service.TransferService;
-import service.impl.AccountServiceMapImpl;
-import service.impl.TransferServiceMapImpl;
+import spark.Response;
 
-import static spark.Spark.*;
+import static spark.Spark.get;
+import static spark.Spark.post;
 
 public class TransferController {
 
-    public static void init() {
-        TransferService transferService = TransferServiceMapImpl.getInstance();
-        AccountService accountService = AccountServiceMapImpl.getInstance();
+    private final TransferService transferService;
 
-        post("/transfers", (request, response) -> {
-            response.type("application/json");
-            return new Gson().toJson(new StandardResponse(StatusResponse.SUCCESS));
-        });
+    public TransferController(TransferService transferService) {
+        this.transferService = transferService;
+    }
 
+    public void register() {
+        post("/transfers", (request, response) ->
+                respond(transferService.transfer(Json.body(request, TransferDTO.class)), response));
 
-        get("/transfers/:id", (request, response) -> {
-            response.type("application/json");
+        get("/transfers/:id", (request, response) ->
+                Json.success(transferService.getTransfer(request.params(":id"))));
+    }
 
-            return new Gson().toJson(new StandardResponse(StatusResponse.SUCCESS, new Gson().toJsonTree(transferService.getTransfer(request.params(":id")))));
-        });
-
-
-
+    static String respond(Transfer transfer, Response response) {
+        if (transfer.getStatus() == Transfer.Status.PROCEEDED) {
+            response.status(201);
+            return Json.success(transfer);
+        }
+        response.status(422);
+        return Json.error(transfer.getFailureReason(), transfer);
     }
 }

@@ -1,77 +1,55 @@
 package controllers;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import entity.StandardResponse;
-import entity.StatusResponse;
-import entity.User;
-import org.javamoney.moneta.Money;
-import service.AccountService;
-import service.MoneyAdapter;
+import entity.Money;
+import entity.dto.AccountDTO;
+import entity.dto.UserDTO;
 import service.UserService;
-import service.impl.AccountServiceMapImpl;
-import service.impl.UserServiceMapImpl;
-import static spark.Spark.*;
+
+import static spark.Spark.delete;
+import static spark.Spark.get;
+import static spark.Spark.options;
+import static spark.Spark.post;
+import static spark.Spark.put;
 
 public class UserController {
 
-    public static void init() {
-        final UserService userService = UserServiceMapImpl.getInstance();
-        final AccountService accountService = AccountServiceMapImpl.getInstance();
-        post("/users", (request, response) -> {
-            response.type("application/json");
+    private final UserService userService;
 
-            User user = new Gson().fromJson(request.body(), User.class);
-            userService.addUser(user);
-
-            return new Gson().toJson(new StandardResponse(StatusResponse.SUCCESS));
-        });
-
-        get("/users", (request, response) -> {
-            response.type("application/json");
-            GsonBuilder gsonBuilder = new GsonBuilder();
-            gsonBuilder.registerTypeAdapter(Money.class, new MoneyAdapter());
-            return gsonBuilder
-                    .create().toJson(new StandardResponse(StatusResponse.SUCCESS, new Gson().toJsonTree(userService.getUsers())));
-        });
-
-        get("/users/:id", (request, response) -> {
-            response.type("application/json");
-            return new Gson().toJsonTree(new StandardResponse(StatusResponse.SUCCESS, new Gson().toJsonTree(userService.getUser(request.params(":id")))));
-        });
-
-        get("/users/:id/accounts", (request, response) -> {
-            response.type("application/json");
-
-            return new Gson().toJson(new StandardResponse(StatusResponse.SUCCESS, new Gson().toJsonTree(userService.getUser(request.params(":id")).getAccounts())));
-        });
-
-        put("/users/:id", (request, response) -> {
-            response.type("application/json");
-
-            User toEdit = new Gson().fromJson(request.body(), User.class);
-            User editedUser = userService.editUser(toEdit);
-
-            if (editedUser != null) {
-                return new Gson().toJson(new StandardResponse(StatusResponse.SUCCESS, new Gson().toJsonTree(editedUser)));
-            } else {
-                return new Gson().toJson(new StandardResponse(StatusResponse.ERROR, new Gson().toJson("User not found or error in edit")));
-            }
-        });
-
-        delete("/users/:id", (request, response) -> {
-            response.type("application/json");
-
-            userService.deleteUser(request.params(":id"));
-            return new Gson().toJson(new StandardResponse(StatusResponse.SUCCESS, "user deleted"));
-        });
-
-        options("/users/:id", (request, response) -> {
-            response.type("application/json");
-
-            return new Gson().toJson(new StandardResponse(StatusResponse.SUCCESS, (userService.userExist(request.params(":id"))) ? "User exists" : "User does not exists"));
-        });
-
+    public UserController(UserService userService) {
+        this.userService = userService;
     }
 
+    public void register() {
+        post("/users", (request, response) -> {
+            response.status(201);
+            return Json.success(userService.addUser(Json.body(request, UserDTO.class)));
+        });
+
+        get("/users", (request, response) -> Json.success(userService.getUsers()));
+
+        get("/users/:id", (request, response) -> Json.success(userService.getUser(request.params(":id"))));
+
+        get("/users/:id/accounts", (request, response) ->
+                Json.success(userService.getAccounts(request.params(":id"))));
+
+        post("/users/:id/accounts", (request, response) -> {
+            AccountDTO dto = Json.body(request, AccountDTO.class);
+            String initial = dto.getInitialBalance() == null ? "0" : dto.getInitialBalance();
+            response.status(201);
+            return Json.success(userService.openAccount(request.params(":id"), dto.getName(),
+                    Money.of(initial, dto.getCurrency())));
+        });
+
+        put("/users/:id", (request, response) ->
+                Json.success(userService.editUser(request.params(":id"), Json.body(request, UserDTO.class))));
+
+        delete("/users/:id", (request, response) -> {
+            userService.deleteUser(request.params(":id"));
+            return Json.successMessage("user deleted");
+        });
+
+        options("/users/:id", (request, response) ->
+                Json.successMessage(userService.userExist(request.params(":id"))
+                        ? "User exists" : "User does not exist"));
+    }
 }
