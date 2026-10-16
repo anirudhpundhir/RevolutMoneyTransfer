@@ -47,7 +47,7 @@ public class AccountController {
         post("/accounts/:accountNumber/transfers", (request, response) -> {
             TransferDTO dto = Json.body(request, TransferDTO.class);
             dto.setAccountNumberFrom(request.params(":accountNumber"));
-            return TransferController.respond(transferService.transfer(dto), response);
+            return TransferController.execute(transferService, dto, request, response);
         });
 
         delete("/accounts/:accountNumber", (request, response) -> {
