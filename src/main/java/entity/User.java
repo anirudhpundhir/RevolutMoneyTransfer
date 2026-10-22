@@ -1,39 +1,26 @@
 package entity;
 
-import service.impl.AccountServiceMapImpl;
-
-import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 public class User {
-    private String id;
-    private String firstName;
-    private String lastName;
-    private String email;
-    private List<Account> accounts;
 
-    // constructors, getters and setters
+    private final String id;
+    private volatile String firstName;
+    private volatile String lastName;
+    private volatile String email;
+    private final List<String> accountNumbers = new CopyOnWriteArrayList<>();
 
-    public User(String firstName, String lastName, String email, List<Account> accounts) {
-        this(firstName, lastName, email);
-        this.accounts = accounts;
-    }
-
-    public User(String firstName, String lastName, String email) {
+    public User(String id, String firstName, String lastName, String email) {
+        this.id = id;
         this.firstName = firstName;
         this.lastName = lastName;
         this.email = email;
-        Account account = new Account("Default account", 0, "RUB");
-        AccountServiceMapImpl.getInstance().addAccount(account);
-        this.accounts = new ArrayList<>();
-        accounts.add(account);
     }
-
 
     public String getId() {
         return id;
     }
-
 
     public String getFirstName() {
         return firstName;
@@ -59,19 +46,15 @@ public class User {
         this.email = email;
     }
 
-    public List<Account> getAccounts() {
-        return accounts;
+    public List<String> getAccountNumbers() {
+        return List.copyOf(accountNumbers);
     }
 
-    public void setAccounts(List<Account> accounts) {
-        this.accounts = accounts;
+    public void addAccountNumber(String accountNumber) {
+        accountNumbers.add(accountNumber);
     }
 
-    public void addAccount(Account account) {
-        this.accounts.add(account);
-    }
-
-    public void setId(String id) {
-        this.id = id;
+    public void removeAccountNumber(String accountNumber) {
+        accountNumbers.remove(accountNumber);
     }
 }

@@ -1,84 +1,99 @@
 package service.impl;
 
+import constants.ExceptionMessages;
+import entity.Account;
+import entity.Money;
 import entity.User;
-import exception.UserException;
+import entity.dto.UserDTO;
+import exception.NotFoundException;
+import service.AccountService;
 import service.UserService;
 
 import java.util.Collection;
-import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class UserServiceMapImpl implements UserService {
-    private HashMap<String, User> userMap;
-    private static UserServiceMapImpl instance;
 
-    private static int id = 0;
+    static final String DEFAULT_ACCOUNT_CURRENCY = "RUB";
 
-    public static UserServiceMapImpl getInstance() {
-        if (instance == null) {
-            instance = new UserServiceMapImpl();
-        }
-        return instance;
-    }
+    private final Map<String, User> users = new ConcurrentHashMap<>();
+    private final AtomicLong idSequence = new AtomicLong();
+    private final AccountService accountService;
 
-    private UserServiceMapImpl() {
-        userMap = new HashMap<>();
+    public UserServiceMapImpl(AccountService accountService) {
+        this.accountService = accountService;
     }
 
     @Override
-    public User addUser(User user) {
-        user.setId(String.valueOf(++id));
-        userMap.put(user.getId(), user);
+    public User addUser(UserDTO dto) {
+        if (dto == null || dto.getFirstName() == null || dto.getFirstName().isBlank()) {
+            throw new IllegalArgumentException(ExceptionMessages.NAME_EMPTY);
+        }
+        User user = new User(String.valueOf(idSequence.incrementAndGet()),
+                dto.getFirstName(), dto.getLastName(), dto.getEmail());
+        Account defaultAccount = accountService.createAccount("Default account", Money.zero(DEFAULT_ACCOUNT_CURRENCY));
+        user.addAccountNumber(defaultAccount.getAccountNumber());
+        users.put(user.getId(), user);
         return user;
     }
 
     @Override
     public Collection<User> getUsers() {
-        return userMap.values();
+        return List.copyOf(users.values());
     }
 
     @Override
     public User getUser(String id) {
-        return userMap.get(id);
+        User user = id == null ? null : users.get(id);
+        if (user == null) {
+            throw new NotFoundException(ExceptionMessages.USER_NOT_FOUND + ": " + id);
+        }
+        return user;
     }
 
     @Override
-    public User editUser(User forEdit) throws UserException {
-        try {
-            if (forEdit.getId() == null)
-                throw new UserException("ID cannot be blank");
+    public List<Account> getAccounts(String userId) {
+        return getUser(userId).getAccountNumbers().stream()
+                .filter(accountService::accountExist)
+                .map(accountService::getAccount)
+                .toList();
+    }
 
-            User toEdit = userMap.get(forEdit.getId());
+    @Override
+    public Account openAccount(String userId, String name, Money initialFunds) {
+        User user = getUser(userId);
+        Account account = accountService.createAccount(name, initialFunds);
+        user.addAccountNumber(account.getAccountNumber());
+        return account;
+    }
 
-            if (toEdit == null)
-                throw new UserException("User not found");
-
-            if (forEdit.getEmail() != null) {
-                toEdit.setEmail(forEdit.getEmail());
-            }
-            if (forEdit.getFirstName() != null) {
-                toEdit.setFirstName(forEdit.getFirstName());
-            }
-            if (forEdit.getLastName() != null) {
-                toEdit.setLastName(forEdit.getLastName());
-            }
-            if (forEdit.getId() != null) {
-                toEdit.setId(forEdit.getId());
-            }
-
-            return toEdit;
-        } catch (Exception ex) {
-            throw new UserException(ex.getMessage());
+    @Override
+    public User editUser(String id, UserDTO changes) {
+        User user = getUser(id);
+        if (changes.getFirstName() != null) {
+            user.setFirstName(changes.getFirstName());
         }
+        if (changes.getLastName() != null) {
+            user.setLastName(changes.getLastName());
+        }
+        if (changes.getEmail() != null) {
+            user.setEmail(changes.getEmail());
+        }
+        return user;
     }
 
     @Override
     public void deleteUser(String id) {
-        userMap.remove(id);
+        if (users.remove(id) == null) {
+            throw new NotFoundException(ExceptionMessages.USER_NOT_FOUND + ": " + id);
+        }
     }
 
     @Override
     public boolean userExist(String id) {
-        return userMap.containsKey(id);
+        return id != null && users.containsKey(id);
     }
-
 }

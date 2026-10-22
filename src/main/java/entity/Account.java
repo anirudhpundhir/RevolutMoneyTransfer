@@ -1,54 +1,41 @@
 package entity;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import constants.ExceptionMessages;
 
+import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.locks.ReentrantLock;
+
+/**
+ * A single-currency account.
+ *
+ * <p>The balance and the closed flag are guarded by {@link #lock()}. Mutating
+ * methods must be called with that lock held; see
+ * {@link service.impl.TransferServiceMapImpl} for the lock-ordering protocol.
+ */
 public class Account {
 
-    private String name;
-    private String accountNumber;
-    private Money fundsAvailable;
-    private List<Transfer> transfers;
-    private String currency;
+    private final String accountNumber;
+    private final String currency;
+    private volatile String name;
+    private volatile Money fundsAvailable;
+    private volatile boolean closed;
+    private final List<Transfer> transfers = new CopyOnWriteArrayList<>();
 
-    private static int accountNumberSequence = 1000000;
+    private final transient ReentrantLock lock = new ReentrantLock();
 
-    public Account(String name) {
-        this(name, "INR");
-    }
-
-    public Account(String name, String currency) {
-        this(name, 1000, currency);
-
-    }
-
-    public Account(String name, double amount, String currency) {
-        if (amount < 0)
-            throw new IllegalArgumentException(ExceptionMessages.AMOUNT_LESSER_THAN_ZERO);
-        if (name.isEmpty()) {
+    public Account(String accountNumber, String name, Money initialFunds) {
+        if (name == null || name.isBlank()) {
             throw new IllegalArgumentException(ExceptionMessages.NAME_EMPTY);
         }
-        this.accountNumber = generateAccountNumber();
+        this.accountNumber = accountNumber;
         this.name = name;
-        this.currency = currency;
-        this.fundsAvailable = new Money(amount, currency);
-        this.transfers = new ArrayList<>();
+        this.currency = initialFunds.getCurrency();
+        this.fundsAvailable = initialFunds;
     }
-
 
     public String getAccountNumber() {
         return accountNumber;
-    }
-
-
-    public List<Transfer> getTransfers() {
-        return transfers;
-    }
-
-    public void setTransfers(List<Transfer> transfers) {
-        this.transfers = transfers;
     }
 
     public String getName() {
@@ -56,6 +43,9 @@ public class Account {
     }
 
     public void setName(String name) {
+        if (name == null || name.isBlank()) {
+            throw new IllegalArgumentException(ExceptionMessages.NAME_EMPTY);
+        }
         this.name = name;
     }
 
@@ -63,36 +53,46 @@ public class Account {
         return currency;
     }
 
-    private String generateAccountNumber() {
-        return String.valueOf(++accountNumberSequence);
-    }
-
     public Money getFundsAvailable() {
         return fundsAvailable;
     }
 
-    public void setFundsAvailable(Money fundsAvailable) {
-        if (!currency.equals(fundsAvailable.getCurrency())) {
-            throw new IllegalArgumentException(ExceptionMessages.WRONG_CURRENCY);
-        }
-        this.fundsAvailable = fundsAvailable;
+    /** Transfer history, oldest first. Read-only view. */
+    public List<Transfer> getTransfers() {
+        return List.copyOf(transfers);
     }
 
-    public void setFundsAvailable(double fundsAvailable) {
-        this.fundsAvailable.setAmount(fundsAvailable);
+    public boolean isClosed() {
+        return closed;
     }
 
-    public void setCurrency(String currency) {
-        this.currency = currency;
-        this.setFundsAvailable(Money.convert(fundsAvailable, currency));
+    public ReentrantLock lock() {
+        return lock;
     }
 
-    public void withdrawMoney(Money amount) {
-        fundsAvailable = fundsAvailable.sub(amount);
+    public void withdraw(Money amount) {
+        requireLocked();
+        fundsAvailable = fundsAvailable.subtract(amount);
     }
 
-    public void addMoney(Money amount) {
+    public void deposit(Money amount) {
+        requireLocked();
         fundsAvailable = fundsAvailable.add(amount);
     }
 
+    public void recordTransfer(Transfer transfer) {
+        requireLocked();
+        transfers.add(transfer);
+    }
+
+    public void close() {
+        requireLocked();
+        closed = true;
+    }
+
+    private void requireLocked() {
+        if (!lock.isHeldByCurrentThread()) {
+            throw new IllegalStateException("Account lock must be held");
+        }
+    }
 }
